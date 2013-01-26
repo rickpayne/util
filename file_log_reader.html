@@ -1,0 +1,164 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Module file_log_reader</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module file_log_reader</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Periodically read an append-only log file and parse newly added data.
+<p>Copyright © 2015 Serge Aleynikov</p>
+
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> Serge Aleynikov (<a href="mailto:saleyn@gmail.com"><tt>saleyn@gmail.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2><p>Periodically read an append-only log file and parse newly added data.</p>
+  
+   <p>The user controls the interval in msec how often to check for file   
+modifications. When new data is appended to file it triggers invocation of   
+the user-defined parsing function that deliminates the file, and the result   
+is delivered to the consumer by calling the consumer callback function.</p>
+  
+   The log reader can be started as a <code>gen_server</code> or can be controlled
+   synchronously by using <code>init/3</code>, <code>run/1</code>, and <code>close/1</code> methods.
+  
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-consumer">consumer()</a></h3>
+<p><pre>consumer() = 
+    fun((Msg :: '$end_of_file' | any(), State :: any()) -&gt;
+            NewState :: any())</pre></p>
+
+
+<h3 class="typedecl"><a name="type-options">options()</a></h3>
+<p><pre>options() = 
+    [{pos, StartPos :: integer()} |
+     {end_pos, ReadUntilPos :: integer() | eof} |
+     {max_size, MaxReadSize :: integer() | eof} |
+     {timeout, MSec :: integer()} |
+     {parser,
+      fun((Data :: binary(), ParserState :: any()) -&gt;
+              {more | done,
+               Msg :: any(),
+               Tail :: binary(),
+               NewParserState :: any()} |
+              {skip, Tail :: binary(), NewParserState :: any()} |
+              false) |
+      {Mod :: atom(), Fun :: atom()}} |
+     {pstate, any()}]</pre></p>
+<p>  Details:
+  <dl>
+  <dt>pos</dt>
+    <dd>Start reading from this position (default: 0)</dd>
+  <dt>end_pos</dt>
+    <dd>Read until this position and stop. If provided and file position reaches
+        <code>end_pos</code>, the consumer() callback given to the reader will be called as:
+        <code>Consumer('$end_of_file', State)</code>
+    </dd>
+  <dt>max_size</dt>
+    <dd>Maximum chunk size to read from file in a single pass (default: 32M).</dd>
+  <dt>timeout</dt>
+    <dd>Number of milliseconds between successive file scanning (default: 1000)</dd>
+  <dt>parser</dt>
+    <dd>Is the function to be called when the next chunk is read from file. The
+        function must return <code>{more, Msg, Tail, State}</code> if there is more data to
+        be parsed in the <code>Tail</code>; <code>{done, Msg, Tail, State}</code> if the <code>Tail</code> contains
+        incomplete message; <code>{skip, Tail, State}</code> to continue parsing <code>Tail</code>
+        without calling <code>Consumer</code> callback on the last parsed message; <code>false</code> if
+        the <code>Data</code> should be ignored without calling <code>Consumer</code> callback.
+    </dd>
+  <dt>pstate</dt>
+    <dd>Initial value of the parser state.</dd>
+  </dl></p>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#close-1">close/1</a></td><td>Close file processor (use this method when not using gen_server).</td></tr>
+<tr><td valign="top"><a href="#init-3">init/3</a></td><td>When using file processor without gen_server, use this function to
+       initialize the state, and then call run/1.</td></tr>
+<tr><td valign="top"><a href="#position-1">position/1</a></td><td>Report last processed file position/size.</td></tr>
+<tr><td valign="top"><a href="#run-1">run/1</a></td><td>Process file from given position <code>Pos</code> to <code>EndPos</code> (or <code>eof</code>).</td></tr>
+<tr><td valign="top"><a href="#start-3">start/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start-4">start/4</a></td><td>Start the server outside of supervision tree.</td></tr>
+<tr><td valign="top"><a href="#start_link-3">start_link/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-4">start_link/4</a></td><td>To be called by the supervisor in order to start the server.</td></tr>
+<tr><td valign="top"><a href="#stop-1">stop/1</a></td><td>Stop the server.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="close-1">close/1</a></h3>
+<div class="spec">
+<p><tt>close(State) -&gt; any()</tt></p>
+</div><p>Close file processor (use this method when not using gen_server)</p>
+
+<h3 class="function"><a name="init-3">init/3</a></h3>
+<div class="spec">
+<p><pre>init(File :: string(),
+     Consumer :: <a href="#type-consumer">consumer()</a>,
+     Options :: <a href="#type-options">options()</a>) -&gt;
+        {ok, #state{}}</pre></p>
+</div><p>When using file processor without gen_server, use this function to
+       initialize the state, and then call run/1.</p>
+
+<h3 class="function"><a name="position-1">position/1</a></h3>
+<div class="spec">
+<p><pre>position(Pid :: pid() | atom()) -&gt; {ok, Position :: integer()}</pre></p>
+</div><p>Report last processed file position/size.</p>
+
+<h3 class="function"><a name="run-1">run/1</a></h3>
+<div class="spec">
+<p><pre>run(State :: #state{}) -&gt; #state{}</pre></p>
+</div><p>Process file from given position <code>Pos</code> to <code>EndPos</code> (or <code>eof</code>).</p>
+
+<h3 class="function"><a name="start-3">start/3</a></h3>
+<div class="spec">
+<p><pre>start(File :: string(),
+      Consumer :: <a href="#type-consumer">consumer()</a>,
+      Options :: <a href="#type-options">options()</a>) -&gt;
+         {ok, pid()} | {error, any()}</pre></p>
+</div>
+
+<h3 class="function"><a name="start-4">start/4</a></h3>
+<div class="spec">
+<p><pre>start(RegName :: atom(),
+      File :: string(),
+      Consumer :: <a href="#type-consumer">consumer()</a>,
+      Options :: <a href="#type-options">options()</a>) -&gt;
+         {ok, pid()} | {error, any()}</pre></p>
+</div><p>Start the server outside of supervision tree.</p>
+
+<h3 class="function"><a name="start_link-3">start_link/3</a></h3>
+<div class="spec">
+<p><pre>start_link(File :: string(),
+           Consumer :: <a href="#type-consumer">consumer()</a>,
+           Options :: <a href="#type-options">options()</a>) -&gt;
+              {ok, pid()} | ignore | {error, any()}</pre></p>
+</div>
+
+<h3 class="function"><a name="start_link-4">start_link/4</a></h3>
+<div class="spec">
+<p><pre>start_link(RegName :: atom(),
+           File :: string(),
+           Consumer :: <a href="#type-consumer">consumer()</a>,
+           Options :: <a href="#type-options">options()</a>) -&gt;
+              {ok, pid()} | ignore | {error, any()}</pre></p>
+</div><p>To be called by the supervisor in order to start the server.
+       If init/1 fails with Reason, the function returns <code>{error,Reason}</code>.
+       If init/1 returns <code>{stop,Reason}</code> or ignore, the process is
+       terminated and the function returns <code>{error,Reason}</code> or ignore,
+       respectively.</p>
+
+<h3 class="function"><a name="stop-1">stop/1</a></h3>
+<div class="spec">
+<p><pre>stop(Pid :: pid() | atom()) -&gt; ok</pre></p>
+</div><p>Stop the server.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Feb 15 2015, 14:21:48.</i></p>
+</body>
+</html>
